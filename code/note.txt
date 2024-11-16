@@ -1,0 +1,3 @@
+choke algorithm for seeders:
+ordering: 	1. order by last unchoked (nearest unchoked) first (a queue)
+		2. because there will be many peers that are unchoked at around the same time, order by upload rate as the second priority (higher upload rate higher priority)
