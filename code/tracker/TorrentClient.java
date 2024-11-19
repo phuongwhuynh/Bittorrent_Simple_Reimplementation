@@ -41,12 +41,12 @@ public class TorrentClient {
         System.out.printf("Parsed torrent file - Announce URL: %s, File Name: %s, File Length: %d, Piece Length: %d\n",
                 announceURL, fileName, fileLength, pieceLength);
 
-        addTorrent(announceURL, infoHash, port, uploaded, downloaded, fileLength, 30); // Interval of 30s
+        addTorrent(announceURL, infoHash, port, uploaded, downloaded, fileLength, 30, torrentInfo); // Interval of 30s
     }
 
     // for magnet... future todo
-    public void addTorrent(String announceURL, byte[] infoHash, int port, long uploaded, long downloaded, long left, int interval) {
-        TorrentState torrentState = new TorrentState(announceURL, infoHash, port, uploaded, downloaded, left, interval);
+    public void addTorrent(String announceURL, byte[] infoHash, int port, long uploaded, long downloaded, long left, int interval, TorrentInfo torrentInfo) {
+        TorrentState torrentState = new TorrentState(announceURL, infoHash, port, uploaded, downloaded, left, interval, torrentInfo);
         torrentStates.put(new String(infoHash), torrentState);
         new Thread(() -> sendRequest(torrentState)).start(); // Start tracking each torrent in a separate thread
     }
@@ -61,8 +61,10 @@ public class TorrentClient {
         long left;
         int interval; 
         List<Map<String, Object>> peers;
+        TorrentInfo torrentInfo;    //==null if use magnet link
 
-        public TorrentState(String announceURL, byte[] infoHash, int port, long uploaded, long downloaded, long left, int interval) {
+        public TorrentState(String announceURL, byte[] infoHash, int port, long uploaded, long downloaded, 
+            long left, int interval, TorrentInfo torrentInfo) {
             this.announceURL = announceURL;
             this.infoHash = infoHash;  
             this.peerId = generatePeerId();
@@ -72,6 +74,7 @@ public class TorrentClient {
             this.left = left;
             this.interval = interval;
             this.peers = new ArrayList<>();
+            this.torrentInfo=torrentInfo;
         }
 
         private byte[] generatePeerId() {
@@ -81,7 +84,6 @@ public class TorrentClient {
             return peerId;
         }
         
-
         private String buildURL() {
             try {
                 String encodedInfoHash = URLHandle.encode(infoHash);
@@ -142,6 +144,7 @@ public class TorrentClient {
 
     // Handle the decoded response from the tracker for a specific torrent
     private void handleTrackerResponse(Map<String, Object> response, TorrentState torrentState) {
+        
         torrentState.interval = (int) response.getOrDefault("interval", torrentState.interval);
         torrentState.peers.clear();
         if (response.containsKey("peers")) {

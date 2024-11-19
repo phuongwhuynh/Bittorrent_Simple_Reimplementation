@@ -86,7 +86,6 @@ public class TrackerServer {
             }
 
             Map<String, Object> responseMap = new HashMap<>();
-            responseMap.put("interval", 1800);
 
             int complete = 0;  
             int incomplete = 0; 
@@ -116,6 +115,11 @@ public class TrackerServer {
             }
             responseMap.put("peers", peerList);
 
+            //if peerList too small (first initiated torrent) put interval time short so that peer can discover each other.
+            if (peerList.size()>10) responseMap.put("interval", 1800);
+            else if (peerList.size() >5) responseMap.put("interval", 60);
+            else if (peerList.size() >2) responseMap.put("interval", 30);
+            else responseMap.put("interval", 10);
 
 
             String response = BEncode.encode(responseMap);

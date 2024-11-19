@@ -7,6 +7,15 @@ import java.net.*;
 
 import util.*;
 
+class Shit {
+    public int a;
+}
+class BullShit {
+    public Shit shit;
+    BullShit(Shit shit){
+        this.shit=shit;
+    }
+}
 
 public class Test {
     static byte[] generatePeerId() {
@@ -32,8 +41,8 @@ public class Test {
             return params;
         }
     public static void main(String[] args) throws IOException {
-        byte[] random=generatePeerId();
-        String str1=new String(random);
+        // byte[] random=generatePeerId();
+        // String str1=new String(random);
         // byte[] random2=str1.getBytes();
         // String str2=new String(random2);
         // String str2encoded=URLHandle.encode(random2);
@@ -44,7 +53,11 @@ public class Test {
         // System.out.println(str3);
         // System.out.println(str3.length());
         //System.out.println( URLHandle.decode("%2B.%07%F6%07%E4x%D1G%0A%E6%C3%F1%BD%EEf%E2%B1%C8%01"));
-        System.out.println( (new String(random) == str1) );
-        
+        //System.out.println( (new String(random) == str1) );
+        Shit shit=new Shit();
+        shit.a=3;
+        BullShit bs=new BullShit(shit);
+        shit.a=5;
+        System.out.println(bs.shit.a);
     }
 }

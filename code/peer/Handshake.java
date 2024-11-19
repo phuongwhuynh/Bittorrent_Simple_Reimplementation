@@ -3,7 +3,6 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.charset.StandardCharsets;
 
 public class Handshake {
     private final byte pstrlen;
@@ -21,10 +20,10 @@ public class Handshake {
     public byte[] getBytes() {
         ByteBuffer buffer = ByteBuffer.allocate(PeerProtocol.HANDSHAKE_LENGTH);
         buffer.put(pstrlen);
-        buffer.put(pstr.getBytes(StandardCharsets.UTF_8));
+        buffer.put(pstr.getBytes());
         buffer.put(reserved);
-        buffer.put(infoHash.getBytes(StandardCharsets.UTF_8));
-        buffer.put(peerId.getBytes(StandardCharsets.UTF_8));
+        buffer.put(infoHash.getBytes());
+        buffer.put(peerId.getBytes());
         return buffer.array();
     }
 
@@ -35,6 +34,9 @@ public class Handshake {
     public String getPeerId(){
         return peerId;
     }
+    public String getInfoHash(){
+        return infoHash;
+    }
     public static Handshake receive(DataInputStream in) throws IOException {
         byte pstrlen = in.readByte();
         byte[] pstrBytes = new byte[pstrlen];
@@ -44,10 +46,10 @@ public class Handshake {
         in.readFully(reserved);
         byte[] infoHashByte = new byte[20];
         in.readFully(infoHashByte);
-        String infoHash = new String(infoHashByte, StandardCharsets.UTF_8);
+        String infoHash = new String(infoHashByte);
         byte[] peerIdBytes = new byte[20];
         in.readFully(peerIdBytes);
-        String peerId = new String(peerIdBytes, StandardCharsets.UTF_8);
+        String peerId = new String(peerIdBytes);
 
         return new Handshake(infoHash, peerId);
     }
