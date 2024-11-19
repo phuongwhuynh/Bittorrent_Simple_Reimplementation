@@ -7,9 +7,7 @@ import com.sun.net.httpserver.HttpExchange;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
-import java.net.URLDecoder;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
+//import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +16,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import peer.Peer;
 import util.BEncode;
+import util.URLHandle;
 
 public class TrackerServer {
 
@@ -40,28 +39,35 @@ public class TrackerServer {
             }
 
 
-            // Parse query parameters
-            String query = exchange.getRequestURI().getQuery();
+            String query = exchange.getRequestURI().getRawQuery();
             Map<String, String> params = parseQueryParams(query);
 
             // Retrieve and decode infoHash
-            String infoHashUrlEncoded = params.get("info_hash");
+            // String infoHashUrlEncoded = params.get("info_hash");
 
-            if (infoHashUrlEncoded == null || infoHashUrlEncoded.isEmpty()) {
-                exchange.sendResponseHeaders(400, -1);
+            // if (infoHashUrlEncoded == null || infoHashUrlEncoded.isEmpty()) {
+            //     exchange.sendResponseHeaders(400, -1);
+            //     return;
+            // }
+
+            // // Decode the URL-encoded info_hash
+            // String infoHash = new String(URLHandle.decode(infoHashUrlEncoded));
+            String infoHash=params.get("info_hash");
+            if (infoHash.length() != 20) { // SHA-1 hash should be 20 bytes long
+                exchange.sendResponseHeaders(401, -1);
                 return;
             }
-
-            // Decode the URL-encoded info_hash
-            String infoHashHex = URLDecoder.decode(infoHashUrlEncoded, StandardCharsets.UTF_8);
-            
-            // Validate the decoded infoHash if needed (e.g., check if it's a valid hex string)
-            if (infoHashHex.length() != 40) { // SHA-1 hash should be 40 characters long
-                exchange.sendResponseHeaders(400, -1);
+            // String peerIdEncoded=params.get("peer_id");
+            // if (peerIdEncoded == null || peerIdEncoded.isEmpty()){
+            //     exchange.sendResponseHeaders(402, -1);
+            //     return;
+            // }
+            // String peerId = new String(URLHandle.decode(peerIdEncoded));
+            String peerId=params.get("peer_id");
+            if (peerId.length() != 20){
+                exchange.sendResponseHeaders(403, -1);
                 return;
             }
-
-            String peerId = params.get("peer_id");
             int port = Integer.parseInt(params.get("port"));
             long uploaded = Long.parseLong(params.getOrDefault("uploaded", "0"));
             long downloaded = Long.parseLong(params.getOrDefault("downloaded", "0"));
@@ -69,21 +75,21 @@ public class TrackerServer {
             String event = params.getOrDefault("event", "");
 
             // Manage peer list for the torrent
-            torrents.putIfAbsent(infoHashHex, new ConcurrentHashMap<>());
-            Map<String, Peer> peerMap = torrents.get(infoHashHex);
+            torrents.putIfAbsent(infoHash, new ConcurrentHashMap<>());
+            Map<String, Peer> peerMap = torrents.get(infoHash);
 
             if ("stopped".equals(event)) {
                 peerMap.remove(peerId);
             } else {
-                Peer peer = new Peer(peerId, exchange.getRemoteAddress().getAddress().getHostAddress(), port, uploaded, downloaded, left);
+                Peer peer = new Peer(peerId.getBytes(), exchange.getRemoteAddress().getAddress().getHostAddress(), port, uploaded, downloaded, left);
                 peerMap.put(peerId, peer);
             }
 
             Map<String, Object> responseMap = new HashMap<>();
             responseMap.put("interval", 1800);
 
-            int complete = 0;  // Number of seeders
-            int incomplete = 0; // Number of leechers
+            int complete = 0;  
+            int incomplete = 0; 
             for (Peer peer : peerMap.values()) {
                 if (peer.getLeft() == 0) {
                     complete++; // Seeder
@@ -97,8 +103,12 @@ public class TrackerServer {
             List<Map<String, Object>> peerList = new ArrayList<>();
 
             for (Peer peer : peerMap.values()) {
+                if (new String(peer.getPeerId()).equals(peerId)) {
+                    System.out.println("yesyesyes");
+                    continue;
+                }
                 Map<String, Object> peerInfo = new HashMap<>();
-                peerInfo.put("peer id", peer.getPeerId());
+                peerInfo.put("peer_id", peer.getPeerId());
                 peerInfo.put("ip", peer.getIP());
                 peerInfo.put("port", peer.getPort());
                 
@@ -109,11 +119,10 @@ public class TrackerServer {
 
 
             String response = BEncode.encode(responseMap);
-            System.out.println("here");
             System.out.println("Encoded Response: " + response);
 
             // Send response headers
-            byte[] responseBytes = response.getBytes(StandardCharsets.UTF_8);
+            byte[] responseBytes = response.getBytes();
             exchange.sendResponseHeaders(200, responseBytes.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(responseBytes);
@@ -121,7 +130,6 @@ public class TrackerServer {
 
         }
 
-        // Utility method to parse query parameters
         private Map<String, String> parseQueryParams(String query) throws IOException {
             Map<String, String> params = new HashMap<>();
             if (query != null) {
@@ -129,8 +137,8 @@ public class TrackerServer {
                 for (String pair : pairs) {
                     String[] keyValue = pair.split("=");
                     if (keyValue.length == 2) {
-                        String key = URLDecoder.decode(keyValue[0], StandardCharsets.UTF_8);
-                        String value = URLDecoder.decode(keyValue[1], StandardCharsets.UTF_8);
+                        String key = new String(URLHandle.decode(keyValue[0]));
+                        String value = new String(URLHandle.decode(keyValue[1]));
                         params.put(key, value);
                     }
                 }

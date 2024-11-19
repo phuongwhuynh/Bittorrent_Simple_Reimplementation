@@ -6,14 +6,14 @@ package peer;
 // import java.util.*;
 import java.nio.charset.StandardCharsets;
 public class Peer {
-    private String peerId;
+    private byte[] peerId;
     private String ip;
     private int port;
     private long uploaded;
     private long downloaded;
     private long left;
 
-    public Peer(String peerId, String ip, int port, long uploaded, long downloaded, long left) {
+    public Peer(byte[] peerId, String ip, int port, long uploaded, long downloaded, long left) {
         this.peerId = peerId;
         this.ip = ip;
         this.port = port;
@@ -33,7 +33,7 @@ public class Peer {
         compact[5] = (byte) (port & 0xFF);
         return new String(compact, StandardCharsets.ISO_8859_1);
     }
-    public String getPeerId(){
+    public byte[] getPeerId(){
         return peerId;
     }
     public String getIP(){

@@ -65,7 +65,11 @@ public class BDecode {
         if (first=='i'){
             return decodeInteger(dp);
         }
-        else if (first>='0' && first <='9'){
+        else if (first=='0'){
+            decodeString(dp);
+            return null;
+        }
+        else if (first>'0' && first <='9'){
             return decodeString(dp);
         }
         else if (first=='l'){
@@ -74,7 +78,7 @@ public class BDecode {
         else if (first=='d'){
             return decodeMap(dp);
         }   
-        else throw new IllegalArgumentException("Not a bencode");
+        else throw new IllegalArgumentException("Not a bencode: "+first);
     }
     public static Object decode(String str){
         DecodePackage dp=new DecodePackage(str);

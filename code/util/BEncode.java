@@ -48,14 +48,18 @@ public class BEncode {
 
     public static String encode(Object o) {
         String ans = "";
+        if (o==null){
+            String str="";
+            ans+=encodeString(str);
+        }
         if (o instanceof String) {
             String str = (String) o;
             ans += encodeString(str);
         } 
-        // else if (o instanceof byte[]){
-        //     byte[] bytes=(byte[]) o;
-        //     ans+=encodeByteArray(bytes);
-        // }
+        else if (o instanceof byte[]){
+            String bytes=new String((byte[]) o);
+            ans+=encodeString(bytes);
+        }
         else if (o instanceof Number) {
             ans += encodeNumber((Number) o);
         } 

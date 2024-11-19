@@ -1,9 +1,6 @@
 package torrent;
 import util.*;
 import java.util.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.io.*;
 
 //Single-file mode
@@ -16,8 +13,15 @@ public class TorrentInfo {
 
     private void parseTorrentFile(String torrentFilePath) throws IOException {
         // Load and decode the torrent file
-        Path filePath = Paths.get(torrentFilePath);
-        String metadata = Files.readString(filePath);
+        String metadata="";
+        FileInputStream fis = new FileInputStream(torrentFilePath);
+        char c;
+        int get;
+        while ((get=fis.read()) != -1){
+            c=(char) get;
+            metadata+=c;
+        }
+        fis.close();
 
         @SuppressWarnings("unchecked")
         Map<String, Object> torrentInfo = (Map<String, Object>) BDecode.decode(metadata);
@@ -34,7 +38,26 @@ public class TorrentInfo {
         Map<String,Object> info=(Map<String,Object>) torrentInfo.get("info");
         return info;
     }
+    public String getName(){
+        return (String) getInfo().get("name");
+    }
+    public int getFileSize(){
+        return (int) getInfo().get("length");
+    }
+    public int getPieceSize(){
+        return (int) getInfo().get("piece length");
+    }
+    public List<byte[]> getPieceHashes(){
+        String pieces = (String) getInfo().get("pieces");
+        int pieceCount = pieces.length() / 20;
+        List<byte[]> hashes=new ArrayList<>(pieceCount);
+        for (int i = 0; i < pieceCount; i++) {
+            String pieceHash = pieces.substring(i*20, (i+1)*20);
+            hashes.set(i, pieceHash.getBytes());
+        }
+        return hashes;
 
+    }
     public void displayInfo() {
         Map<String,Object> info=getInfo();
         System.out.println("Announce URL: " + getAnnounceURL());
@@ -58,9 +81,7 @@ public class TorrentInfo {
         info.put("name", file.getName());
         info.put("length", file.length());
         info.put("piece length", Conf.pieceLength);
-        List<String> hash=Piece.piecesSHA1(filePath);
-        String hashString="";
-        for (String code : hash) hashString+=code;
+        byte[] hashString= SHA.piecesSHA1(filePath);
         info.put("pieces", hashString);
         Map<String, Object> torrentInfo=new HashMap<>();
         torrentInfo.put("announce", Conf.announce);
