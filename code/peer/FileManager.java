@@ -1,7 +1,8 @@
 package peer;
 import java.io.*;
 import java.util.*;
-//import util.*;
+import util.Conf;
+import util.SHA;
 import torrent.TorrentInfo;
 
 public class FileManager {
@@ -12,7 +13,7 @@ public class FileManager {
     private final int totalPieces;
     private final int fileSize;
     private int downloaded;
-    private int[] bytesDownloaded;
+    private boolean[][] blockDownloaded;
 
     public FileManager(TorrentInfo torrentInfo) {
         //this.name=torrentInfo.getName();
@@ -21,11 +22,12 @@ public class FileManager {
         pieces= new byte[totalPieces][];
         int fileSize=torrentInfo.getFileSize();
         this.fileSize=fileSize;
-        bytesDownloaded=new int[totalPieces];
+        blockDownloaded=new boolean[totalPieces][];
         int pieceSize=torrentInfo.getPieceSize();
         for (int i=0; i<totalPieces; ++i){
-            bytesDownloaded[i]=0;
             pieces[i]=new byte[Math.min(fileSize, pieceSize)];
+            blockDownloaded[i]=new boolean[(int) Math.ceil(pieces[i].length/Conf.BLOCK_LENGTH)];
+            for (int j=0; j<blockDownloaded[i].length; ++j) blockDownloaded[i][j]=false;
             fileSize-=pieceSize;
         }
         havePiece = new ArrayList<>(totalPieces);
@@ -34,6 +36,9 @@ public class FileManager {
     }
     public int getTotalPieces(){
         return totalPieces;
+    }
+    public int getTotalBlock(int piece){
+        return blockDownloaded[piece].length;
     }
     public byte[] getBitField() {
         int byteArraySize = (int) Math.ceil(havePiece.size() / 8.0);
@@ -49,23 +54,29 @@ public class FileManager {
         }
         return bitfield;
     }
-    public void writeBlock(int index, int begin, byte[] block) {
+    public synchronized void writeBlock(int index, int begin, byte[] block) {   //multithreading
         if (index >= 0 && index < totalPieces) {
             // Check if the piece is valid
             byte[] piece = pieces[index];
             int end = Math.min(begin + block.length, piece.length);
             System.arraycopy(block, 0, piece, begin, end - begin); // Write the block to the piece
+            int blockIndex=begin/Conf.BLOCK_LENGTH;
+            setStatus(index, blockIndex, true);
 
-            // Update 'have' list if the entire piece has been downloaded
-            bytesDownloaded[index]+=block.length;
-            downloaded+=block.length;
-            if (bytesDownloaded[index] == pieces[index].length) havePiece.set(index, true);
+            
         } else {
             System.out.println("Invalid piece index: " + index);
         }
     }
     public int getBlockIndex(int pieceIndex){
-        return bytesDownloaded[pieceIndex];
+        for (int i=0; i<blockDownloaded[pieceIndex].length; ++i){
+            if (blockDownloaded[pieceIndex][i]==false) return i;
+        }
+ 
+        return -1;
+    }
+    public int getBlockLength(int pieceIndex, int blockIndex){
+        return Math.min(Conf.BLOCK_LENGTH, pieces[pieceIndex].length-Conf.BLOCK_LENGTH*blockIndex);
     }
     public void constructFile(String outputFilePath) throws IOException {
         if (downloaded == fileSize) {
@@ -93,6 +104,24 @@ public class FileManager {
         } else {
             return null;  // Invalid index
         }
+    }
+    public synchronized void setStatus(int pieceIndex, int blockIndex, boolean status){
+        blockDownloaded[pieceIndex][blockIndex]=status;
+    }
+    public boolean validate(int pieceIndex){
+        byte[] curHash=SHA.generateSHA1Hash(pieces[pieceIndex]);
+        byte[] expectedHash= pieceHashes.get(pieceIndex);
+        if (Arrays.equals(curHash, expectedHash)){
+            //update havePiece if the piece is valid
+            havePiece.set(pieceIndex,true);
+            downloaded+=pieces[pieceIndex].length;
+            return true;
+        }
+        else {
+            for (int i=0; i<blockDownloaded[pieceIndex].length; ++i) setStatus(pieceIndex, i, false); //flush the status to get the piece again
+            return false;
+        }
+        
     }
 }
 

@@ -1,14 +1,16 @@
 import java.io.*;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
 import java.net.*;
 
 import util.*;
 
 class Shit {
-    public int a;
+    double a;
+    Shit(double a) {
+        this.a=a;
+    }
+    public double getNum(){return a;}
 }
 class BullShit {
     public Shit shit;
@@ -54,10 +56,7 @@ public class Test {
         // System.out.println(str3.length());
         //System.out.println( URLHandle.decode("%2B.%07%F6%07%E4x%D1G%0A%E6%C3%F1%BD%EEf%E2%B1%C8%01"));
         //System.out.println( (new String(random) == str1) );
-        Shit shit=new Shit();
-        shit.a=3;
-        BullShit bs=new BullShit(shit);
-        shit.a=5;
-        System.out.println(bs.shit.a);
+        int[] abc=new int[10];
+        System.out.println(abc.length);
     }
 }

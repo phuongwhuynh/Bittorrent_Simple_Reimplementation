@@ -4,16 +4,20 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import tracker.TorrentClient;
+
 public class PeerServer {
     private final int port;
     private final String infoHash;
     private final String expectedPeerId;
     private FileManager fileManager;
-    public PeerServer(int port, String infoHash, String expectedPeerId, FileManager fileManager) {
+    private TorrentClient.TorrentState parent;
+    public PeerServer( int port, String infoHash, String expectedPeerId, FileManager fileManager, TorrentClient.TorrentState parent) {
         this.port = port;
         this.infoHash = infoHash;
         this.expectedPeerId = expectedPeerId;
         this.fileManager=fileManager;
+        this.parent=parent;
     }
 
     public void start() {
@@ -25,7 +29,7 @@ public class PeerServer {
                 System.out.println("Accepted connection from " + clientSocket.getInetAddress());
 
                 // Spawn a new PeerConnection for each accepted connection
-                PeerConnection peerConnection = new PeerConnection(clientSocket, infoHash, expectedPeerId, fileManager);
+                PeerConnection peerConnection = new PeerConnection(parent.peerIndex++, clientSocket, infoHash, expectedPeerId, fileManager, parent);
                 new Thread(peerConnection).start();
             }
         } catch (IOException e) {

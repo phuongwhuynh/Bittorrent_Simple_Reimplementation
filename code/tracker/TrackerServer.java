@@ -103,7 +103,6 @@ public class TrackerServer {
 
             for (Peer peer : peerMap.values()) {
                 if (new String(peer.getPeerId()).equals(peerId)) {
-                    System.out.println("yesyesyes");
                     continue;
                 }
                 Map<String, Object> peerInfo = new HashMap<>();
