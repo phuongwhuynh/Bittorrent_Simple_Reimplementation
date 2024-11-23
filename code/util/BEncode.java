@@ -1,4 +1,5 @@
 package util;
+import java.io.UnsupportedEncodingException;
 import java.util.*;
 
 public class BEncode {
@@ -26,7 +27,7 @@ public class BEncode {
     //     return bytes.length + ":" + hexString.toString();
     // }
     
-    public static String encodeList(List<?> list) {
+    public static String encodeList(List<?> list) throws UnsupportedEncodingException {
         String ans = "";
         for (int i = 0; i < list.size(); ++i) {
             Object o = list.get(i);
@@ -35,7 +36,7 @@ public class BEncode {
         return 'l' + ans + 'e';
     }
 
-    public static String encodeMap(Map<?, ?> map) {
+    public static String encodeMap(Map<?, ?> map) throws UnsupportedEncodingException {
         String ans = "";
         for (Map.Entry<?, ?> ele : map.entrySet()) {
             Object key = ele.getKey();
@@ -46,7 +47,7 @@ public class BEncode {
         return 'd' + ans + 'e';
     }
 
-    public static String encode(Object o) {
+    public static String encode(Object o) throws UnsupportedEncodingException {
         String ans = "";
         if (o==null){
             String str="";
@@ -57,7 +58,7 @@ public class BEncode {
             ans += encodeString(str);
         } 
         else if (o instanceof byte[]){
-            String bytes=new String((byte[]) o);
+            String bytes=new String((byte[]) o, "ISO-8859-1");
             ans+=encodeString(bytes);
         }
         else if (o instanceof Number) {

@@ -4,6 +4,7 @@ import java.util.*;
 import util.Conf;
 import util.SHA;
 import torrent.TorrentInfo;
+import tracker.TorrentClient;
 
 public class FileManager {
     //private final String name;
@@ -14,9 +15,10 @@ public class FileManager {
     private final int fileSize;
     private int downloaded;
     private boolean[][] blockDownloaded;
-
-    public FileManager(TorrentInfo torrentInfo) {
+    private TorrentClient.TorrentState parent;
+    public FileManager(TorrentInfo torrentInfo, TorrentClient.TorrentState parent) throws UnsupportedEncodingException {
         //this.name=torrentInfo.getName();
+        this.parent=parent;
         this.pieceHashes=torrentInfo.getPieceHashes();
         this.totalPieces=pieceHashes.size();
         pieces= new byte[totalPieces][];
@@ -31,8 +33,56 @@ public class FileManager {
             fileSize-=pieceSize;
         }
         havePiece = new ArrayList<>(totalPieces);
-        for (int i=0; i<totalPieces; ++i) havePiece.add(Boolean.FALSE); // Correct initialization
+        for (int i=0; i<totalPieces; ++i) havePiece.add(Boolean.FALSE); 
         downloaded=0;
+    }
+    public void bufferToFile(String outputPath){
+        //to do: write byte[][] pieces to outputPath
+        try (FileOutputStream fileOutputStream = new FileOutputStream(outputPath)) {
+            for (byte[] piece : pieces) {
+                if (piece != null) {
+                    fileOutputStream.write(piece);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        for (int i=0; i<totalPieces; ++i) havePiece.set(i,Boolean.TRUE);
+
+    }
+    public void fileToBuffer(String inputPath) throws IOException{
+        //to do write to pieces
+        try (FileInputStream fileInputStream = new FileInputStream(inputPath)) {
+            byte[] buffer = new byte[Conf.pieceLength];
+            int bytesRead;
+            
+            for (int i = 0; i < totalPieces; i++) {
+                bytesRead = fileInputStream.read(buffer);
+                if (bytesRead == -1) {
+                    break; // End of file reached
+                }
+                
+                if (bytesRead < Conf.pieceLength) {
+                    pieces[i] = Arrays.copyOf(buffer, bytesRead);
+                } else {
+                    pieces[i] = buffer.clone();
+                }
+            }
+            for (int i=0; i<totalPieces; ++i) havePiece.set(i,Boolean.TRUE);
+            for (int i=0; i<totalPieces; ++i){
+                byte[] expectedHash=pieceHashes.get(i);
+                byte[] curHash=SHA.generateSHA1Hash(pieces[i]);
+                System.out.print("curHash: ");
+                for (int j=0; j<20; ++j) System.out.print((int) curHash[j]+",");
+                System.out.println();
+                System.out.print("expectedHash: ");
+                for (int j=0; j<20; ++j) System.out.print((int) expectedHash[j]+",");
+                System.out.println();
+
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
     public int getTotalPieces(){
         return totalPieces;
@@ -52,6 +102,7 @@ public class FileManager {
                 bitfield[byteIndex] |= (1 << bitIndex);
             }
         }
+
         return bitfield;
     }
     public synchronized void writeBlock(int index, int begin, byte[] block) {   //multithreading
@@ -108,9 +159,12 @@ public class FileManager {
     public synchronized void setStatus(int pieceIndex, int blockIndex, boolean status){
         blockDownloaded[pieceIndex][blockIndex]=status;
     }
-    public boolean validate(int pieceIndex){
+    public boolean validate(int pieceIndex) throws UnsupportedEncodingException{
         byte[] curHash=SHA.generateSHA1Hash(pieces[pieceIndex]);
         byte[] expectedHash= pieceHashes.get(pieceIndex);
+        System.out.println("curHash: "+ new String(curHash, "ISO-8859-1"));
+        System.out.println("expectedHash: "+ new String(expectedHash, "ISO-8859-1"));
+
         if (Arrays.equals(curHash, expectedHash)){
             //update havePiece if the piece is valid
             havePiece.set(pieceIndex,true);
@@ -118,11 +172,38 @@ public class FileManager {
             return true;
         }
         else {
+            havePiece.set(pieceIndex, false);   //redundancy for good
             for (int i=0; i<blockDownloaded[pieceIndex].length; ++i) setStatus(pieceIndex, i, false); //flush the status to get the piece again
+            parent.setStatus(pieceIndex, 0);
             return false;
         }
         
     }
+    public byte[] concatenation(){
+        int totalLength = 0;
+        for (byte[] piece : pieces) {
+            totalLength += piece.length;
+        }
+            byte[] result = new byte[totalLength];
+    
+        int currentPosition = 0;
+        for (byte[] piece : pieces) {
+            System.arraycopy(piece, 0, result, currentPosition, piece.length);
+            currentPosition += piece.length;
+        }
+    
+        return result;
+    
+    }
+    // public boolean validateAll(byte[] infoHash){
+    //     byte[] temp=concatenation();
+    //     if (Arrays.equals(infoHash, SHA.generateSHA1Hash(temp))) return true;
+    //     else {
+    //         for (int i=0; i<totalPieces; ++i) validate(i);
+    //         return false;
+    //     }
+    // }
+
 }
 
 

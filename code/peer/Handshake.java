@@ -2,6 +2,7 @@ package peer;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.nio.ByteBuffer;
 
 public class Handshake {
@@ -17,13 +18,13 @@ public class Handshake {
         this.peerId = peerId;
     }
 
-    public byte[] getBytes() {
+    public byte[] getBytes() throws UnsupportedEncodingException {
         ByteBuffer buffer = ByteBuffer.allocate(PeerProtocol.HANDSHAKE_LENGTH);
         buffer.put(pstrlen);
-        buffer.put(pstr.getBytes());
+        buffer.put(pstr.getBytes("ISO-8859-1"));
         buffer.put(reserved);
-        buffer.put(infoHash.getBytes());
-        buffer.put(peerId.getBytes());
+        buffer.put(infoHash.getBytes("ISO-8859-1"));
+        buffer.put(peerId.getBytes("ISO-8859-1"));
         return buffer.array();
     }
 
@@ -37,7 +38,7 @@ public class Handshake {
     public String getInfoHash(){
         return infoHash;
     }
-    public static Handshake receive(DataInputStream in) throws IOException {
+    public static Handshake receive(DataInputStream in) throws IOException, UnsupportedEncodingException {
         byte pstrlen = in.readByte();
         byte[] pstrBytes = new byte[pstrlen];
         in.readFully(pstrBytes);
@@ -46,10 +47,10 @@ public class Handshake {
         in.readFully(reserved);
         byte[] infoHashByte = new byte[20];
         in.readFully(infoHashByte);
-        String infoHash = new String(infoHashByte);
+        String infoHash = new String(infoHashByte, "ISO-8859-1");
         byte[] peerIdBytes = new byte[20];
         in.readFully(peerIdBytes);
-        String peerId = new String(peerIdBytes);
+        String peerId = new String(peerIdBytes, "ISO-8859-1");
 
         return new Handshake(infoHash, peerId);
     }

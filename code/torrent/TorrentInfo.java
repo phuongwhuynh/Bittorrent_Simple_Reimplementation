@@ -47,18 +47,18 @@ public class TorrentInfo {
     public int getPieceSize(){
         return (int) getInfo().get("piece length");
     }
-    public List<byte[]> getPieceHashes(){
+    public List<byte[]> getPieceHashes() throws UnsupportedEncodingException {
         String pieces = (String) getInfo().get("pieces");
         int pieceCount = pieces.length() / 20;
         List<byte[]> hashes=new ArrayList<>(pieceCount);
         for (int i = 0; i < pieceCount; i++) {
             String pieceHash = pieces.substring(i*20, (i+1)*20);
-            hashes.set(i, pieceHash.getBytes());
+            hashes.add(pieceHash.getBytes("ISO-8859-1"));
         }
         return hashes;
 
     }
-    public void displayInfo() {
+    public void displayInfo()  {
         Map<String,Object> info=getInfo();
         System.out.println("Announce URL: " + getAnnounceURL());
         System.out.println("Name: " + info.get("name"));

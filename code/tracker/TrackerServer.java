@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpExchange;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
 //import java.net.URLEncoder;
 import java.util.ArrayList;
@@ -22,13 +23,6 @@ public class TrackerServer {
 
     private static final int PORT = 8080;
     private static final Map<String, Map<String, Peer>> torrents = new ConcurrentHashMap<>();
-
-    public static void main(String[] args) throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
-        server.createContext("/announce", new AnnounceHandler());
-        System.out.println("Tracker is running on port " + PORT);
-        server.start();
-    }
 
     static class AnnounceHandler implements HttpHandler {
         @Override
@@ -81,7 +75,8 @@ public class TrackerServer {
             if ("stopped".equals(event)) {
                 peerMap.remove(peerId);
             } else {
-                Peer peer = new Peer(peerId.getBytes(), exchange.getRemoteAddress().getAddress().getHostAddress(), port, uploaded, downloaded, left);
+                //IP address: exchange.getRemoteAddress().getAddress().getHostAddress();
+                Peer peer = new Peer(peerId.getBytes("ISO-8859-1"), exchange.getRemoteAddress().getAddress().getHostAddress(), port, uploaded, downloaded, left);
                 peerMap.put(peerId, peer);
             }
 
@@ -102,7 +97,7 @@ public class TrackerServer {
             List<Map<String, Object>> peerList = new ArrayList<>();
 
             for (Peer peer : peerMap.values()) {
-                if (new String(peer.getPeerId()).equals(peerId)) {
+                if (new String(peer.getPeerId(), "ISO-8859-1").equals(peerId)) {
                     continue;
                 }
                 Map<String, Object> peerInfo = new HashMap<>();
@@ -115,17 +110,18 @@ public class TrackerServer {
             responseMap.put("peers", peerList);
 
             //if peerList too small (first initiated torrent) put interval time short so that peer can discover each other.
-            if (peerList.size()>10) responseMap.put("interval", 1800);
-            else if (peerList.size() >5) responseMap.put("interval", 60);
-            else if (peerList.size() >2) responseMap.put("interval", 30);
-            else responseMap.put("interval", 10);
-
+            // if (peerList.size()>10) responseMap.put("interval", 1800);
+            // else if (peerList.size() >5) responseMap.put("interval", 60);
+            // else if (peerList.size() >2) responseMap.put("interval", 30);
+            // else responseMap.put("interval", 10);
+            if (peerList.size()==0) responseMap.put("interval", 10);
+            else responseMap.put("interval", 1800);
 
             String response = BEncode.encode(responseMap);
             System.out.println("Encoded Response: " + response);
 
             // Send response headers
-            byte[] responseBytes = response.getBytes();
+            byte[] responseBytes = response.getBytes("ISO-8859-1");
             exchange.sendResponseHeaders(200, responseBytes.length);
             try (OutputStream os = exchange.getResponseBody()) {
                 os.write(responseBytes);
@@ -133,20 +129,26 @@ public class TrackerServer {
 
         }
 
-        private Map<String, String> parseQueryParams(String query) throws IOException {
+        private Map<String, String> parseQueryParams(String query) throws IOException, UnsupportedEncodingException {
             Map<String, String> params = new HashMap<>();
             if (query != null) {
                 String[] pairs = query.split("&");
                 for (String pair : pairs) {
                     String[] keyValue = pair.split("=");
                     if (keyValue.length == 2) {
-                        String key = new String(URLHandle.decode(keyValue[0]));
-                        String value = new String(URLHandle.decode(keyValue[1]));
+                        String key = new String(URLHandle.decode(keyValue[0]), "ISO-8859-1");
+                        String value = new String(URLHandle.decode(keyValue[1]), "ISO-8859-1");
                         params.put(key, value);
                     }
                 }
             }
             return params;
         }
+    }
+    public static void main(String[] args) throws IOException {
+        HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
+        server.createContext("/announce", new AnnounceHandler());
+        System.out.println("Tracker is running on port " + PORT);
+        server.start();
     }
 }

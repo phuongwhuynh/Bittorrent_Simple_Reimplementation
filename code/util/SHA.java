@@ -1,8 +1,8 @@
 package util;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.Map;
 
 public class SHA {
@@ -44,12 +44,12 @@ public class SHA {
         return hexString.toString();
     }
 
-    public static byte[] calculateInfoHash(Map<String, Object> info) {
+    public static byte[] calculateInfoHash(Map<String, Object> info) throws UnsupportedEncodingException {
         try {
             // Re-encode the "info" dictionary to bencode format
             String infoEncoded = BEncode.encode(info); 
             MessageDigest digest = MessageDigest.getInstance("SHA-1");
-            byte[] infoHashBytes = digest.digest(infoEncoded.getBytes(StandardCharsets.ISO_8859_1));
+            byte[] infoHashBytes = digest.digest(infoEncoded.getBytes("ISO-8859-1"));
             return infoHashBytes; // Convert byte array to hexadecimal string
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-1 algorithm not found", e);
@@ -64,9 +64,10 @@ public class SHA {
         byte[] concantenatedHash=new byte[numPieces * 20];
 
         try (FileInputStream fis = new FileInputStream(sourceFile)) {
-            byte[] buffer = new byte[Conf.pieceLength];
             int currentPos=0;
             for (int i = 0; i < numPieces; i++) {
+                byte[] buffer = new byte[Math.min(Conf.pieceLength,(int) totalSize-Conf.pieceLength*i)];
+
                 int bytesRead = fis.read(buffer);
                 if (bytesRead == -1) break; // End of file
 
@@ -78,11 +79,33 @@ public class SHA {
         return concantenatedHash;
     }
     
-    public static void main(String[] args) {
-        File file = new File("testDir/random.txt"); 
-        byte[] sha1Hash = generateSHA1Hash(file);
-        if (sha1Hash != null) {
-            System.out.println("SHA-1 Hash: " + new String(sha1Hash));
+    public static void main(String[] args) throws UnsupportedEncodingException, IOException {
+        // byte[] sha1Hash = piecesSHA1("testDir/random.txt");
+        // if (sha1Hash != null) {
+        //     System.out.println("SHA-1 Hash: " + new String(sha1Hash, "ISO-8859-1"));
+        // }
+        byte[][] pieces=new byte[3][];
+        for (int i=0; i<3; ++i) pieces[i]=new byte[Math.min(Conf.pieceLength, 4215-i*Conf.pieceLength)];
+        try (FileInputStream fileInputStream = new FileInputStream("testDir/random.txt")) {
+            byte[] buffer = new byte[Conf.pieceLength];
+            int bytesRead;
+            
+            for (int i = 0; i < 3; i++) {
+                bytesRead = fileInputStream.read(buffer);
+                if (bytesRead == -1) {
+                    break; // End of file reached
+                }
+                
+                if (bytesRead < Conf.pieceLength) {
+                    pieces[i] = Arrays.copyOf(buffer, bytesRead);
+                } else {
+                    pieces[i] = buffer.clone();
+                }
+            }
+            for (int i=0; i<3; ++i) System.out.println(new String(SHA.generateSHA1Hash(pieces[i]), "ISO-8859-1"));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
     }
 }
