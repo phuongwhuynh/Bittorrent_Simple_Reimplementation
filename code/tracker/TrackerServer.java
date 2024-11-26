@@ -114,7 +114,7 @@ public class TrackerServer {
             // else if (peerList.size() >5) responseMap.put("interval", 60);
             // else if (peerList.size() >2) responseMap.put("interval", 30);
             // else responseMap.put("interval", 10);
-            if (peerList.size()==0) responseMap.put("interval", 10);
+            if (peerList.size()<5) responseMap.put("interval", 10);
             else responseMap.put("interval", 1800);
 
             String response = BEncode.encode(responseMap);

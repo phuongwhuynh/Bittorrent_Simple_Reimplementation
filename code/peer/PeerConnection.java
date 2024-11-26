@@ -25,7 +25,7 @@ public class PeerConnection implements Runnable {
     private boolean cancelled=false;
     private TorrentClient.TorrentState parent;
     private int inflightRequests=0;
-    private int curBlockIndex=-1;    //differ to getBlockIndex in FileManager because one this one serve for sending pipelined requests
+    private int curBlockIndex=0;    //differ to getBlockIndex in FileManager because one this one serve for sending pipelined requests
     private int currentPiece=-1;
     private int totalPieceBlock=-1;
     private class DownloadEvent {
@@ -80,7 +80,7 @@ public class PeerConnection implements Runnable {
 
     }
     public void setChoke() throws IOException{
-        System.out.println("Choke peer " + peerIndex);
+        //System.out.println("Choke peer " + peerIndex);
         sendMessage(Message.chokeMessage());
         amChoking=true;
     }
@@ -112,7 +112,7 @@ public class PeerConnection implements Runnable {
             e.printStackTrace();
         }
     }
-    private void sendNextRequest() throws IOException {
+    private synchronized void sendNextRequest() throws IOException {
         while (peerChoking == false && inflightRequests<Conf.MAX_PIPELINE && curBlockIndex<totalPieceBlock){
             sendRequest(currentPiece, curBlockIndex);
             ++inflightRequests;
@@ -171,7 +171,6 @@ public class PeerConnection implements Runnable {
             parent.addConnection(this);
 
             while (!socket.isClosed()){
-                //System.out.println("still running");
                 try{
 
                     int length = in.readInt();
@@ -221,8 +220,8 @@ public class PeerConnection implements Runnable {
                             byte[] block=new byte[blockLength];
                             for (int i=begin; i<end; i+=256){  
                                 if (cancelled) break;
-                                byte[] get=fileManager.getPieceBlock(index, i, 256);
-                                System.arraycopy(block, i-begin, get, 0, 256);
+                                byte[] get=fileManager.getPieceBlock(index, i, Math.min(256,end-i));
+                                System.arraycopy(get, 0, block, i-begin, Math.min(256,end-i));
                             }
                             if (cancelled) continue;
                             else{
@@ -234,15 +233,16 @@ public class PeerConnection implements Runnable {
                     else if (messageId == PeerProtocol.PIECE){
                         int index=in.readInt();
                         int begin=in.readInt();
+                        int blockIndex=begin/Conf.BLOCK_LENGTH;
+                        if (fileManager.blockDownloaded[index][blockIndex]) continue;
                         byte[] block= new byte[length-9];
                         in.readFully(block);
                         fileManager.writeBlock(index, begin, block);
                         inflightRequests--;
                         parent.increaseDownload(block.length);
-                        int blockIndex=begin/Conf.BLOCK_LENGTH;
                         if (blockIndex==totalPieceBlock-1){
                             if (fileManager.validate(index)) {
-                                System.out.println("Downloaded piece " + currentPiece + " from " + peerIndex);
+                                System.out.println("Downloaded piece " + currentPiece + " from peer " + peerIndex);
                                 parent.setStatus(index, 1);
                                 parent.sendHave(currentPiece);
                                 parent.assignPiece(this);

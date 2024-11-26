@@ -13,8 +13,8 @@ public class FileManager {
     public List<Boolean> havePiece;
     private final int totalPieces;
     private final int fileSize;
-    private int downloaded;
-    private boolean[][] blockDownloaded;
+    //private int downloaded;
+    public boolean[][] blockDownloaded;
     private TorrentClient.TorrentState parent;
     public FileManager(TorrentInfo torrentInfo, TorrentClient.TorrentState parent) throws UnsupportedEncodingException {
         //this.name=torrentInfo.getName();
@@ -28,16 +28,16 @@ public class FileManager {
         int pieceSize=torrentInfo.getPieceSize();
         for (int i=0; i<totalPieces; ++i){
             pieces[i]=new byte[Math.min(fileSize, pieceSize)];
-            blockDownloaded[i]=new boolean[(int) Math.ceil(pieces[i].length/Conf.BLOCK_LENGTH)];
+            blockDownloaded[i]=new boolean[(int) Math.ceil(((double) pieces[i].length)/Conf.BLOCK_LENGTH)];
             for (int j=0; j<blockDownloaded[i].length; ++j) blockDownloaded[i][j]=false;
             fileSize-=pieceSize;
         }
         havePiece = new ArrayList<>(totalPieces);
         for (int i=0; i<totalPieces; ++i) havePiece.add(Boolean.FALSE); 
-        downloaded=0;
     }
     public void bufferToFile(String outputPath){
         //to do: write byte[][] pieces to outputPath
+        System.out.println("All pieces downloaded. Assembling the file...");
         try (FileOutputStream fileOutputStream = new FileOutputStream(outputPath)) {
             for (byte[] piece : pieces) {
                 if (piece != null) {
@@ -47,38 +47,35 @@ public class FileManager {
         } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println("File successfully constructed at: " + outputPath);
         for (int i=0; i<totalPieces; ++i) havePiece.set(i,Boolean.TRUE);
 
     }
     public void fileToBuffer(String inputPath) throws IOException{
         //to do write to pieces
         try (FileInputStream fileInputStream = new FileInputStream(inputPath)) {
-            byte[] buffer = new byte[Conf.pieceLength];
             int bytesRead;
             
             for (int i = 0; i < totalPieces; i++) {
-                bytesRead = fileInputStream.read(buffer);
+                bytesRead = fileInputStream.read(pieces[i]);
                 if (bytesRead == -1) {
                     break; // End of file reached
                 }
-                
-                if (bytesRead < Conf.pieceLength) {
-                    pieces[i] = Arrays.copyOf(buffer, bytesRead);
-                } else {
-                    pieces[i] = buffer.clone();
-                }
+
             }
             for (int i=0; i<totalPieces; ++i) havePiece.set(i,Boolean.TRUE);
             for (int i=0; i<totalPieces; ++i){
                 byte[] expectedHash=pieceHashes.get(i);
                 byte[] curHash=SHA.generateSHA1Hash(pieces[i]);
-                System.out.print("curHash: ");
-                for (int j=0; j<20; ++j) System.out.print((int) curHash[j]+",");
-                System.out.println();
-                System.out.print("expectedHash: ");
-                for (int j=0; j<20; ++j) System.out.print((int) expectedHash[j]+",");
-                System.out.println();
-
+                if (!Arrays.equals(expectedHash, curHash)) {
+                    System.out.println("wtf");
+                }
+                // System.out.print("curHash: ");
+                // for (int j=0; j<20; ++j) System.out.print((int) curHash[j]+",");
+                // System.out.println();
+                // System.out.print("expectedHash: ");
+                // for (int j=0; j<20; ++j) System.out.print((int) expectedHash[j]+",");
+                // System.out.println();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -127,22 +124,9 @@ public class FileManager {
         return -1;
     }
     public int getBlockLength(int pieceIndex, int blockIndex){
-        return Math.min(Conf.BLOCK_LENGTH, pieces[pieceIndex].length-Conf.BLOCK_LENGTH*blockIndex);
+        return Math.min(Conf.BLOCK_LENGTH, ((int) pieces[pieceIndex].length)-Conf.BLOCK_LENGTH*blockIndex);
     }
-    public void constructFile(String outputFilePath) throws IOException {
-        if (downloaded == fileSize) {
-            System.out.println("All pieces downloaded. Assembling the file...");
-            try (FileOutputStream fileOutputStream = new FileOutputStream(outputFilePath)) {
-                for (int i = 0; i < totalPieces; ++i) {
-                    fileOutputStream.write(pieces[i]);
-                }
-            }
-            System.out.println("File successfully constructed at: " + outputFilePath);
-        } 
-        else {
-            System.out.println("File is not completely downloaded.");
-        }
-    }
+
     public byte[] getPieceBlock(int index, int begin, int length){
         if (index >= 0 && index < pieces.length) {
             byte[] piece = pieces[index];  // Get the piece from the array
@@ -160,15 +144,14 @@ public class FileManager {
         blockDownloaded[pieceIndex][blockIndex]=status;
     }
     public boolean validate(int pieceIndex) throws UnsupportedEncodingException{
+
         byte[] curHash=SHA.generateSHA1Hash(pieces[pieceIndex]);
         byte[] expectedHash= pieceHashes.get(pieceIndex);
-        System.out.println("curHash: "+ new String(curHash, "ISO-8859-1"));
-        System.out.println("expectedHash: "+ new String(expectedHash, "ISO-8859-1"));
 
         if (Arrays.equals(curHash, expectedHash)){
             //update havePiece if the piece is valid
             havePiece.set(pieceIndex,true);
-            downloaded+=pieces[pieceIndex].length;
+            //downloaded+=pieces[pieceIndex].length;
             return true;
         }
         else {
@@ -195,6 +178,7 @@ public class FileManager {
         return result;
     
     }
+    //public boolean synchronized checkDownload()
     // public boolean validateAll(byte[] infoHash){
     //     byte[] temp=concatenation();
     //     if (Arrays.equals(infoHash, SHA.generateSHA1Hash(temp))) return true;

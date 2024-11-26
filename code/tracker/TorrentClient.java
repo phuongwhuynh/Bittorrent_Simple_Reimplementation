@@ -17,7 +17,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import torrent.TorrentInfo;
 import util.*;
 import peer.*;
-
+import torrent.TorrentInfo;
 
 public class TorrentClient {
 
@@ -207,7 +207,7 @@ public class TorrentClient {
             else {
                 fileManager.fileToBuffer(outputPath);
                 gotAll=true;
-                this.pieceStatus=new ArrayList<>(Collections.nCopies(fileManager.getTotalPieces(), 1));     //default value 0
+                this.pieceStatus=new ArrayList<>(Collections.nCopies(fileManager.getTotalPieces(), 1));     //default value 1
                 this.pieceCounter = new ArrayList<>(Collections.nCopies(fileManager.getTotalPieces(), 0));  //default value 0
             }
             peerConnections=new ArrayList<>();
@@ -216,20 +216,23 @@ public class TorrentClient {
         }
         
         void updatePeerList(List<Map<String, Object>> peers) throws IOException{
-            if (peerServer!=null){
-                peerServer.dropServer();
-            }
-            peerServer=new PeerServer(this.port, new String(this.infoHash, "ISO-8859-1"), this.fileManager, this);
-            peerServer.start();
 
+            connectionMap.clear();
+            this.peers=peers;
+            peerConnections.clear();
             while (!this.peerConnections.isEmpty()){
                 PeerConnection peerConnection=this.peerConnections.get(0);
                 peerConnection.dropConnection();
             }
-            connectionMap.clear();
-            this.peers=peers;
-            peerConnections.clear();
+
+            if (peerServer!=null){
+                peerServer.dropServer();
+            }
             this.peerIndex=0;
+            peerServer=new PeerServer(this.port, new String(this.infoHash, "ISO-8859-1"), this.fileManager, this);
+            peerServer.start();
+
+
             for (Map<String,Object> peer : peers){
                 try{
                     
@@ -296,7 +299,8 @@ public class TorrentClient {
             for (PeerConnection peerConnection : peerConnections) peerConnection.sendHave(pieceIndex);
         }
         public synchronized void assignPiece(PeerConnection peerConnection) throws IOException{
-            // fuck
+
+            System.out.println();
             if (gotAll){
                 peerConnection.sendNotInterested();
             }
@@ -381,12 +385,23 @@ public class TorrentClient {
 
     // Main method for testing
     public static void main(String[] args) {
-        TorrentClient client = new TorrentClient(true);
-        try{
-            
-            //client.addTorrentFromFileContent("torrent/example.torrent", "testDir/output.txt", 6881);
-            client.addSeeder("torrent/example.torrent", "testDir/random.txt", 6882);
+        TorrentClient seeder = new TorrentClient(true);
+        TorrentClient leecher1=new TorrentClient(true);
+        TorrentClient leecher2=new TorrentClient(true);
+        TorrentClient leecher3=new TorrentClient(true);
+        TorrentClient leecher4=new TorrentClient(true);
+        TorrentClient leecher5=new TorrentClient(true);
 
+        try{
+            String filename="testDir/dieubuonnhat.mp4";
+            String torrentPath="torrent/audio.torrent";
+            TorrentInfo.generateTorrentFile(filename, torrentPath);
+            seeder.addSeeder(torrentPath, filename, 6880);
+            leecher1.addTorrentFromFileContent(torrentPath, "testDir/video1.mp4", 6881);
+            leecher2.addTorrentFromFileContent(torrentPath, "testDir/video2.mp4", 6882);
+            leecher3.addTorrentFromFileContent(torrentPath, "testDir/video3.mp4", 6883);
+            leecher4.addTorrentFromFileContent(torrentPath, "testDir/video4.mp4", 6884);
+            leecher5.addTorrentFromFileContent(torrentPath, "testDir/video5.mp4", 6885);
         }
         catch (IOException e){
             e.printStackTrace();

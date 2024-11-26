@@ -67,7 +67,6 @@ public class SHA {
             int currentPos=0;
             for (int i = 0; i < numPieces; i++) {
                 byte[] buffer = new byte[Math.min(Conf.pieceLength,(int) totalSize-Conf.pieceLength*i)];
-
                 int bytesRead = fis.read(buffer);
                 if (bytesRead == -1) break; // End of file
 

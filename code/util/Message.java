@@ -35,7 +35,7 @@ public class Message {
         return buffer.array(); 
     }
     public static byte[] haveMessage(int pieceIndex){
-        ByteBuffer buffer = ByteBuffer.allocate(5); 
+        ByteBuffer buffer = ByteBuffer.allocate(9); 
         buffer.putInt(5); // message length
         buffer.put((byte) PeerProtocol.HAVE); 
         buffer.putInt(pieceIndex);

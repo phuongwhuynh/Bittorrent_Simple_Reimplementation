@@ -58,22 +58,26 @@ public class TorrentInfo {
         return hashes;
 
     }
-    public void displayInfo()  {
+    public void displayInfo() throws UnsupportedEncodingException {
         Map<String,Object> info=getInfo();
-        System.out.println("Announce URL: " + getAnnounceURL());
-        System.out.println("Name: " + info.get("name"));
-        System.out.println("Length: " + info.get("length"));
-        System.out.println("Piece Length: " + info.get("piece length"));
+        // System.out.println("Announce URL: " + getAnnounceURL());
+        // System.out.println("Name: " + info.get("name"));
+        // System.out.println("Length: " + info.get("length"));
+        // System.out.println("Piece Length: " + info.get("piece length"));
         
-        String pieces = (String) info.get("pieces");
-        int pieceCount = pieces.length() / 20;
-        System.out.println("Pieces: " + pieceCount + " pieces (each 20 bytes long)");
+        // String pieces = (String) info.get("pieces");
+        // int pieceCount = pieces.length() / 20;
+        // System.out.println("Pieces: " + pieceCount + " pieces (each 20 bytes long)");
         
-        // Print each piece hash in hexadecimal format
-        for (int i = 0; i < pieceCount; i++) {
-            String pieceHash = pieces.substring(i*20, (i+1)*20);
-            System.out.println("  Piece " + (i + 1) + " Hash: " + pieceHash);
-        }
+        // // Print each piece hash in hexadecimal format
+        // for (int i = 0; i < pieceCount; i++) {
+        //     String pieceHash = pieces.substring(i*20, (i+1)*20);
+        //     System.out.println("  Piece " + (i + 1) + " Hash: " + pieceHash);
+        // }
+        String pieces= (String) info.get("pieces");
+        byte[] hashPieces=pieces.getBytes("ISO-8859-1");
+        for (int i=0; i<hashPieces.length; ++i) System.out.print(hashPieces[i]+",");
+        System.out.println();
     }
     public static void generateTorrentFile(String filePath, String torrentFilePath) throws IOException {
         File file=new File(filePath);
@@ -82,14 +86,15 @@ public class TorrentInfo {
         info.put("length", file.length());
         info.put("piece length", Conf.pieceLength);
         byte[] hashString= SHA.piecesSHA1(filePath);
+
         info.put("pieces", hashString);
         Map<String, Object> torrentInfo=new HashMap<>();
         torrentInfo.put("announce", Conf.announce);
         torrentInfo.put("info", info);
-        String code= BEncode.encode(torrentInfo);
-        FileWriter writer=new FileWriter(torrentFilePath);
-        writer.write(code);
-        writer.close();
+        String code = BEncode.encode(torrentInfo);
+        try (OutputStreamWriter writer = new OutputStreamWriter(new FileOutputStream(torrentFilePath), "ISO-8859-1")) {
+            writer.write(code);
+        }
     }
 
     public static void main(String[] args) throws IOException {
