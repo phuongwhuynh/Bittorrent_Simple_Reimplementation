@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 import tracker.TorrentClient;
 import util.*;
@@ -37,7 +38,7 @@ public class PeerConnection implements Runnable {
             this.bytes = bytes;
         }
     }
-    private LinkedList<DownloadEvent> downloadHistory = new LinkedList<>(); // Store download history
+    private ConcurrentLinkedDeque<DownloadEvent> downloadHistory = new ConcurrentLinkedDeque<>();
 
     public PeerConnection(Socket socket, String infoHash, FileManager fileManager, TorrentClient.TorrentState parent) throws IOException {
         this.socket = socket;
@@ -72,7 +73,7 @@ public class PeerConnection implements Runnable {
             out.write(message);
             out.flush();
         } catch (SocketException e) {
-            System.err.println("SocketException: Connection aborted - " + e.getMessage());
+            System.err.println("Peer " + peerIndex+ ": Connection aborted");
             dropConnection();  // Close the connection cleanly
         } catch (IOException e) {
             e.printStackTrace();
@@ -100,10 +101,14 @@ public class PeerConnection implements Runnable {
     public void sendHave(int pieceIndex) throws IOException {
         sendMessage(Message.haveMessage(pieceIndex));
     }
-    public void startSendingRequest(int piece){
-        System.out.println("Assign piece " + piece +" to peer " + peerIndex);
+    public void startSendingRequest(int piece) throws IOException{
+        //System.out.println("Assign piece " + piece +" to peer " + peerIndex);
         this.currentPiece=piece;
         this.curBlockIndex=fileManager.getBlockIndex(piece);
+        if (curBlockIndex==-1){
+            parent.assignPiece(this);
+            return;
+        }
         this.totalPieceBlock=fileManager.getTotalBlock(piece);
         try {
             sendNextRequest();
@@ -122,35 +127,37 @@ public class PeerConnection implements Runnable {
     public void sendRequest(int pieceIndex, int blockIndex) throws IOException {
         sendMessage(Message.requestMessage(pieceIndex, blockIndex*Conf.BLOCK_LENGTH, fileManager.getBlockLength(pieceIndex, blockIndex)));
     }
+
     public void updateDownloadedBytes(long bytes) {
         long currentTime = System.currentTimeMillis();
-        downloadHistory.add(new DownloadEvent(currentTime, bytes)); // Add download event with timestamp
-        // Remove events that are older than timeWindow
-        while (!downloadHistory.isEmpty() && (currentTime - downloadHistory.get(0).timestamp) > Conf.timeWindow) {
-            downloadHistory.remove(0);
-        }
+        downloadHistory.add(new DownloadEvent(currentTime, bytes)); 
     }
     public double calculateDownloadSpeed() {
         if (downloadHistory.isEmpty()) return 0;
+    
         long totalBytesDownloaded = 0;
-        long currentTime=System.currentTimeMillis();
-        while (!downloadHistory.isEmpty() && (currentTime - downloadHistory.get(0).timestamp) > Conf.timeWindow) {
-            downloadHistory.remove(0);
+        long currentTime = System.currentTimeMillis();
+    
+        while (!downloadHistory.isEmpty() && (currentTime - downloadHistory.peekFirst().timestamp) > Conf.timeWindow) {
+            downloadHistory.pollFirst(); 
         }
-        // Sum up all the bytes downloaded within the last timeWindow
+    
+        if (downloadHistory.isEmpty()) return 0;
+    
         for (DownloadEvent event : downloadHistory) {
             totalBytesDownloaded += event.bytes;
         }
-
-        // Calculate speed: bytes downloaded / elapsed time in seconds
-        long timeDifferenceInSeconds = (currentTime - (downloadHistory.isEmpty() ? currentTime : downloadHistory.get(0).timestamp)) / 1000;
+    
+        long timeDifferenceInSeconds = (currentTime - downloadHistory.peekFirst().timestamp) / 1000;
+        
         if (timeDifferenceInSeconds == 0) {
             return 0;
         }
-
-        double downloadSpeed = (double) totalBytesDownloaded / timeDifferenceInSeconds;  // speed in bytes per second
-        return downloadSpeed;
+    
+        return (double) totalBytesDownloaded / timeDifferenceInSeconds;
     }
+    
+    
 
     public void run()  {
         try{
@@ -240,6 +247,7 @@ public class PeerConnection implements Runnable {
                         fileManager.writeBlock(index, begin, block);
                         inflightRequests--;
                         parent.increaseDownload(block.length);
+                        updateDownloadedBytes(length-9);
                         if (blockIndex==totalPieceBlock-1){
                             if (fileManager.validate(index)) {
                                 System.out.println("Downloaded piece " + currentPiece + " from peer " + peerIndex);

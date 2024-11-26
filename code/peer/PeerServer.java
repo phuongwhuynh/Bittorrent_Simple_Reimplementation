@@ -23,7 +23,7 @@ public class PeerServer extends Thread {
     public void run() {
         try (ServerSocket serverSocket = new ServerSocket(port)) {
             this.serverSocket=serverSocket;
-            System.out.println("Peer B listening on port " + port);
+            System.out.println("Client server listening on port " + port);
             while (!serverSocket.isClosed()) {
                 // accept an incoming connection
                 try{

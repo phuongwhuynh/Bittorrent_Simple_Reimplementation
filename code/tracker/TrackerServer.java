@@ -8,20 +8,18 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.InetSocketAddress;
-//import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import peer.Peer;
 import util.BEncode;
 import util.URLHandle;
-
+import util.Conf;
+import java.util.Scanner;
 public class TrackerServer {
-
-    private static final int PORT = 8080;
+    private HttpServer server;
     private static final Map<String, Map<String, Peer>> torrents = new ConcurrentHashMap<>();
 
     static class AnnounceHandler implements HttpHandler {
@@ -73,6 +71,7 @@ public class TrackerServer {
             Map<String, Peer> peerMap = torrents.get(infoHash);
 
             if ("stopped".equals(event)) {
+                System.out.println("YES SIR REMOVED IT");
                 peerMap.remove(peerId);
             } else {
                 //IP address: exchange.getRemoteAddress().getAddress().getHostAddress();
@@ -145,10 +144,20 @@ public class TrackerServer {
             return params;
         }
     }
-    public static void main(String[] args) throws IOException {
-        HttpServer server = HttpServer.create(new InetSocketAddress(PORT), 0);
+    public TrackerServer() throws IOException {
+        this.server = HttpServer.create(new InetSocketAddress(Conf.SERVER_PORT), 0);
         server.createContext("/announce", new AnnounceHandler());
-        System.out.println("Tracker is running on port " + PORT);
+        System.out.println("Tracker is running on port " + Conf.SERVER_PORT);
         server.start();
+    }
+    public void close(){
+        server.stop(0);
+    }
+    public static void main(String[] args) throws IOException{
+        TrackerServer trackerServer=new TrackerServer();
+        Scanner scanner=new Scanner(System.in);
+        scanner.nextLine();
+        scanner.close();
+        trackerServer.close();
     }
 }

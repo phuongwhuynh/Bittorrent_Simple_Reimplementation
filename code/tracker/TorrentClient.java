@@ -4,7 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-import java.io.File;
+//import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.Socket;
@@ -17,16 +17,30 @@ import java.util.concurrent.ConcurrentHashMap;
 import torrent.TorrentInfo;
 import util.*;
 import peer.*;
+
 import torrent.TorrentInfo;
+@SuppressWarnings("unused")
 
 public class TorrentClient {
 
     private Map<String, TorrentState> torrentStates; // Maps infoHash to torrent state
     private boolean compact;
 
-    public TorrentClient(boolean compact) {
+    public TorrentClient(boolean compact)  {
         this.torrentStates = new ConcurrentHashMap<>();
         this.compact = compact;
+    
+        // Add a shutdown hook to notify tracker when client exits
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            torrentStates.values().forEach(this::sendStoppedEvent);
+        }));
+    }
+    private void sendStoppedEvent(TorrentState torrentState)  {
+        try {
+            System.out.println("Sending stopped event for torrent: " + new String(torrentState.infoHash, "ISO-8859-1"));
+        }
+        catch (UnsupportedEncodingException e) {}
+        sendRequest(torrentState, "stopped");
     }
     public void addTorrentFromFileContent(String torrentFilePath, String outputPath, int port) throws IOException {
         TorrentInfo torrentInfo=new TorrentInfo(torrentFilePath);
@@ -49,15 +63,6 @@ public class TorrentClient {
         Map<String, Object> info = torrentInfo.getInfo();
         byte[] infoHash = SHA.calculateInfoHash(info);
 
-        //new todo: validate file with pieces hash
-
-        // File file=new File(inputPath);
-        // byte[] curHash=SHA.generateSHA1Hash(file);
-        // if (!Arrays.equals(infoHash, curHash)){
-        //     System.out.println("This file does not fit in with this torrent");
-        //     return;
-        // }
-        // Extract additional metadata
         String fileName = (String) info.get("name");
         int fileLength = (int) info.get("length");
         int pieceLength = (int) info.get("piece length");
@@ -71,20 +76,21 @@ public class TorrentClient {
 
     // for magnet... future todo
     public void addTorrent(String announceURL, byte[] infoHash, int port, long left, int interval, TorrentInfo torrentInfo, String outputPath, boolean seeder) 
-            throws IOException, UnsupportedEncodingException {
+    throws IOException, UnsupportedEncodingException {
         TorrentState torrentState = new TorrentState(announceURL, infoHash, port, 0, 0, left, interval, torrentInfo, outputPath, seeder);
         torrentStates.put(new String(infoHash, "ISO-8859-1"), torrentState);
-        new Thread(() -> sendRequest(torrentState)).start(); // Start tracking each torrent in a separate thread
+        new Thread(() -> sendRequest(torrentState, "started")).start(); // Start tracking with "started" event
     }
+
 
 
 
     
     // send the request to the tracker at regular intervals for a specific torrent
-    private void sendRequest(TorrentState torrentState) {
+    private void sendRequest(TorrentState torrentState, String event) {
         while (true) {
             try {
-                String fullURL = torrentState.buildURL();
+                String fullURL = torrentState.buildURL(event); // Pass event type to buildURL
                 if (fullURL == null) {
                     System.out.println("Error building URL for torrent: " + torrentState.infoHash);
                     return;
@@ -111,7 +117,11 @@ public class TorrentClient {
                 } else {
                     System.out.println("Failed to connect. Response Code: " + responseCode);
                 }
-
+    
+                if ("stopped".equals(event)) {
+                    return; // Exit the loop if we're sending a stopped event
+                }
+    
                 // Wait for the specified interval before sending the next update
                 Thread.sleep(torrentState.interval * 1000);
             } catch (Exception e) {
@@ -122,6 +132,7 @@ public class TorrentClient {
         }
     }
 
+    
     // Handle the decoded response from the tracker for a specific torrent
     private void handleTrackerResponse(Map<String, Object> response, TorrentState torrentState) throws IOException {
         
@@ -271,18 +282,18 @@ public class TorrentClient {
             return peerId;
         }
         
-        private String buildURL() throws UnsupportedEncodingException {     
+        private String buildURL(String event) throws UnsupportedEncodingException {     
             try {
                 String encodedInfoHash = URLHandle.encode(infoHash);
-                System.out.println("hash: " + encodedInfoHash);
                 String encodedPeerId = URLHandle.encode(peerId);
-                return String.format("%s?info_hash=%s&peer_id=%s&port=%d&uploaded=%d&downloaded=%d&left=%d&compact=%d",
-                        announceURL, encodedInfoHash, encodedPeerId, port, uploaded, downloaded, left, compact ? 1 : 0);
+                return String.format("%s?info_hash=%s&peer_id=%s&port=%d&uploaded=%d&downloaded=%d&left=%d&compact=%d&event=%s",
+                        announceURL, encodedInfoHash, encodedPeerId, port, uploaded, downloaded, left, compact ? 1 : 0, event);
             } catch (Exception e) {
                 System.err.println("Error encoding URL parameters: " + e.getMessage());
                 return null;
             }
         }
+        
         public synchronized void increaseUpload(int data){
             this.uploaded+=data;
         }
@@ -300,7 +311,6 @@ public class TorrentClient {
         }
         public synchronized void assignPiece(PeerConnection peerConnection) throws IOException{
 
-            System.out.println();
             if (gotAll){
                 peerConnection.sendNotInterested();
             }
@@ -347,6 +357,7 @@ public class TorrentClient {
                         int unchokedPeersCount = 0;
                         for (PeerConnection peer : peerConnections) {
                             if (peer.peerInterested && unchokedPeersCount < Conf.MAX_UNCHOKED_PEERS) {
+                                System.out.print("Download speed: "+ peer.calculateDownloadSpeed() + " bytes/s -- ");
                                 peer.setUnchoke();
                                 unchokedPeersCount++;
                             }
@@ -394,7 +405,7 @@ public class TorrentClient {
 
         try{
             String filename="testDir/dieubuonnhat.mp4";
-            String torrentPath="torrent/audio.torrent";
+            String torrentPath="torrent/video.torrent";
             TorrentInfo.generateTorrentFile(filename, torrentPath);
             seeder.addSeeder(torrentPath, filename, 6880);
             leecher1.addTorrentFromFileContent(torrentPath, "testDir/video1.mp4", 6881);

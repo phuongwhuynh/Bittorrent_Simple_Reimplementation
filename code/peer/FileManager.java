@@ -12,7 +12,7 @@ public class FileManager {
     private List<byte[]> pieceHashes;
     public List<Boolean> havePiece;
     private final int totalPieces;
-    private final int fileSize;
+    //private final int fileSize;
     //private int downloaded;
     public boolean[][] blockDownloaded;
     private TorrentClient.TorrentState parent;
@@ -23,7 +23,7 @@ public class FileManager {
         this.totalPieces=pieceHashes.size();
         pieces= new byte[totalPieces][];
         int fileSize=torrentInfo.getFileSize();
-        this.fileSize=fileSize;
+        //this.fileSize=fileSize;
         blockDownloaded=new boolean[totalPieces][];
         int pieceSize=torrentInfo.getPieceSize();
         for (int i=0; i<totalPieces; ++i){
@@ -143,7 +143,7 @@ public class FileManager {
     public synchronized void setStatus(int pieceIndex, int blockIndex, boolean status){
         blockDownloaded[pieceIndex][blockIndex]=status;
     }
-    public boolean validate(int pieceIndex) throws UnsupportedEncodingException{
+    public synchronized boolean validate(int pieceIndex) throws UnsupportedEncodingException{
 
         byte[] curHash=SHA.generateSHA1Hash(pieces[pieceIndex]);
         byte[] expectedHash= pieceHashes.get(pieceIndex);
