@@ -79,10 +79,6 @@ public class SHA {
     }
     
     public static void main(String[] args) throws UnsupportedEncodingException, IOException {
-        // byte[] sha1Hash = piecesSHA1("testDir/random.txt");
-        // if (sha1Hash != null) {
-        //     System.out.println("SHA-1 Hash: " + new String(sha1Hash, "ISO-8859-1"));
-        // }
         byte[][] pieces=new byte[3][];
         for (int i=0; i<3; ++i) pieces[i]=new byte[Math.min(Conf.pieceLength, 4215-i*Conf.pieceLength)];
         try (FileInputStream fileInputStream = new FileInputStream("testDir/random.txt")) {

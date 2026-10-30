@@ -7,23 +7,18 @@ import torrent.TorrentInfo;
 import tracker.TorrentClient;
 
 public class FileManager {
-    //private final String name;
     private byte[][] pieces;
     private List<byte[]> pieceHashes;
     public List<Boolean> havePiece;
     private final int totalPieces;
-    //private final int fileSize;
-    //private int downloaded;
     public boolean[][] blockDownloaded;
     private TorrentClient.TorrentState parent;
     public FileManager(TorrentInfo torrentInfo, TorrentClient.TorrentState parent) throws UnsupportedEncodingException {
-        //this.name=torrentInfo.getName();
         this.parent=parent;
         this.pieceHashes=torrentInfo.getPieceHashes();
         this.totalPieces=pieceHashes.size();
         pieces= new byte[totalPieces][];
         int fileSize=torrentInfo.getFileSize();
-        //this.fileSize=fileSize;
         blockDownloaded=new boolean[totalPieces][];
         int pieceSize=torrentInfo.getPieceSize();
         for (int i=0; i<totalPieces; ++i){
@@ -36,7 +31,6 @@ public class FileManager {
         for (int i=0; i<totalPieces; ++i) havePiece.add(Boolean.FALSE); 
     }
     public void bufferToFile(String outputPath){
-        //to do: write byte[][] pieces to outputPath
         System.out.println("All pieces downloaded. Assembling the file...");
         try (FileOutputStream fileOutputStream = new FileOutputStream(outputPath)) {
             for (byte[] piece : pieces) {
@@ -52,7 +46,6 @@ public class FileManager {
 
     }
     public void fileToBuffer(String inputPath) throws IOException{
-        //to do write to pieces
         try (FileInputStream fileInputStream = new FileInputStream(inputPath)) {
             int bytesRead;
             
@@ -68,14 +61,8 @@ public class FileManager {
                 byte[] expectedHash=pieceHashes.get(i);
                 byte[] curHash=SHA.generateSHA1Hash(pieces[i]);
                 if (!Arrays.equals(expectedHash, curHash)) {
-                    System.out.println("wtf");
+                    System.out.println("Warning: piece " + i + " does not match its SHA-1 hash");
                 }
-                // System.out.print("curHash: ");
-                // for (int j=0; j<20; ++j) System.out.print((int) curHash[j]+",");
-                // System.out.println();
-                // System.out.print("expectedHash: ");
-                // for (int j=0; j<20; ++j) System.out.print((int) expectedHash[j]+",");
-                // System.out.println();
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -151,7 +138,6 @@ public class FileManager {
         if (Arrays.equals(curHash, expectedHash)){
             //update havePiece if the piece is valid
             havePiece.set(pieceIndex,true);
-            //downloaded+=pieces[pieceIndex].length;
             return true;
         }
         else {
@@ -178,15 +164,6 @@ public class FileManager {
         return result;
     
     }
-    //public boolean synchronized checkDownload()
-    // public boolean validateAll(byte[] infoHash){
-    //     byte[] temp=concatenation();
-    //     if (Arrays.equals(infoHash, SHA.generateSHA1Hash(temp))) return true;
-    //     else {
-    //         for (int i=0; i<totalPieces; ++i) validate(i);
-    //         return false;
-    //     }
-    // }
 
 }
 

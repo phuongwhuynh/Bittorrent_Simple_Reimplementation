@@ -4,14 +4,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
-//import java.io.File;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.Socket;
-//import java.net.URLEncoder;
-//import java.nio.charset.StandardCharsets;
-//import java.security.MessageDigest;
-//import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import torrent.TorrentInfo;
@@ -74,7 +69,6 @@ public class TorrentClient {
 
     }
 
-    // for magnet... future todo
     public void addTorrent(String announceURL, byte[] infoHash, int port, long left, int interval, TorrentInfo torrentInfo, String outputPath, boolean seeder) 
     throws IOException, UnsupportedEncodingException {
         TorrentState torrentState = new TorrentState(announceURL, infoHash, port, 0, 0, left, interval, torrentInfo, outputPath, seeder);
@@ -144,13 +138,6 @@ public class TorrentClient {
             if (peersObj instanceof List) {
                 @SuppressWarnings("unchecked")
                 List<Map<String,Object>> peers = (List<Map<String,Object>>) peersObj;
-                // for (Object peerObj : peers) {
-                //     if (peerObj instanceof Map) {
-                //         @SuppressWarnings("unchecked")
-                //         Map<String, Object> peerMap = (Map<String, Object>) peerObj;
-                //         torrentState.peers.add(peerMap);
-                //     }
-                // }
                 torrentState.updatePeerList(peers);
             }
             try{
@@ -267,7 +254,6 @@ public class TorrentClient {
                 connectionMap.put(peerConnection.peerId, peerConnection);
                 peerConnection.peerIndex=this.peerIndex++;
             }
-            //else peerConnection.dropConnection();
         }
         public boolean verifyPeerId(String handshakePeerId){
             for (Map<String, Object> peer: peers) {
@@ -346,8 +332,7 @@ public class TorrentClient {
             public void run(){
                 while (true){
                     try {
-                        // unchoke 4 + 1, 4 highest download speed + 1 optimistic
-                        //System.out.println("choking manager running");
+                        // unchoke the MAX_UNCHOKED_PEERS fastest peers + 1 optimistic
                         if (peerConnections==null) {
                             Thread.sleep(1000);
                             continue;

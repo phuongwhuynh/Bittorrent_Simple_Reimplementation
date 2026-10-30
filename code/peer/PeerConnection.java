@@ -67,8 +67,6 @@ public class PeerConnection implements Runnable {
     }
 
     public synchronized void sendMessage(byte[] message) throws IOException {
-        // out.write(message);
-        // out.flush();
         try {
             out.write(message);
             out.flush();
@@ -81,7 +79,6 @@ public class PeerConnection implements Runnable {
 
     }
     public void setChoke() throws IOException{
-        //System.out.println("Choke peer " + peerIndex);
         sendMessage(Message.chokeMessage());
         amChoking=true;
     }
@@ -102,7 +99,6 @@ public class PeerConnection implements Runnable {
         sendMessage(Message.haveMessage(pieceIndex));
     }
     public void startSendingRequest(int piece) throws IOException{
-        //System.out.println("Assign piece " + piece +" to peer " + peerIndex);
         this.currentPiece=piece;
         this.curBlockIndex=fileManager.getBlockIndex(piece);
         if (curBlockIndex==-1){

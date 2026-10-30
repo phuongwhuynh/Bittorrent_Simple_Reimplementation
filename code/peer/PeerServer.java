@@ -43,11 +43,4 @@ public class PeerServer extends Thread {
     public void dropServer() throws IOException{
         serverSocket.close();
     }
-    public static void main(String[] args) {
-        //int port = 6881; // Port on which Peer B will listen
-        //String infoHash = "someInfoHash";
-        //String expectedPeerId = "peerBId";
-        //PeerServer peerServer = new PeerServer(port, infoHash, expectedPeerId);
-        //peerServer.start();
-    }
 }

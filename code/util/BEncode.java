@@ -19,13 +19,6 @@ public class BEncode {
         return String.valueOf(str.length()) + ':' + str;
     }
 
-    // public static String encodeByteArray(byte[] bytes) {
-    //     StringBuilder hexString = new StringBuilder();
-    //     for (byte b : bytes) {
-    //         hexString.append(String.format("%02x", b));
-    //     }
-    //     return bytes.length + ":" + hexString.toString();
-    // }
     
     public static String encodeList(List<?> list) throws UnsupportedEncodingException {
         String ans = "";
@@ -78,7 +71,4 @@ public class BEncode {
         return ans;
     }
 
-    // public static void main(String[] args) {
-    //     System.out.println(encode("hello"));
-    // }
 }

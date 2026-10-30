@@ -60,20 +60,6 @@ public class TorrentInfo {
     }
     public void displayInfo() throws UnsupportedEncodingException {
         Map<String,Object> info=getInfo();
-        // System.out.println("Announce URL: " + getAnnounceURL());
-        // System.out.println("Name: " + info.get("name"));
-        // System.out.println("Length: " + info.get("length"));
-        // System.out.println("Piece Length: " + info.get("piece length"));
-        
-        // String pieces = (String) info.get("pieces");
-        // int pieceCount = pieces.length() / 20;
-        // System.out.println("Pieces: " + pieceCount + " pieces (each 20 bytes long)");
-        
-        // // Print each piece hash in hexadecimal format
-        // for (int i = 0; i < pieceCount; i++) {
-        //     String pieceHash = pieces.substring(i*20, (i+1)*20);
-        //     System.out.println("  Piece " + (i + 1) + " Hash: " + pieceHash);
-        // }
         String pieces= (String) info.get("pieces");
         byte[] hashPieces=pieces.getBytes("ISO-8859-1");
         for (int i=0; i<hashPieces.length; ++i) System.out.print(hashPieces[i]+",");

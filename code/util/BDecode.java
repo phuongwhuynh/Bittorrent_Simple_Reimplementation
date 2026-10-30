@@ -84,21 +84,4 @@ public class BDecode {
         DecodePackage dp=new DecodePackage(str);
         return decodeObject(dp);
     }
-    // public static void main(String args[]){
-    //     List<Object> list = new LinkedList<>();
-    //     list.add("Hello");
-    //     list.add(123);         
-    //     List<Object> list2=new ArrayList<>();
-    //     list2.add("wtf");
-    //     list2.add(1808);
-    //     list.add(list2);
-    //     Map<Object,Object> map=new LinkedHashMap<>();
-    //     map.put(18,15);
-    //     map.put("lp", 18);
-    //     map.put(15, "st");
-    //     map.put(list, "1808");
-    //     String code=Encode.encode(map);
-    //     System.out.println(code);
-    //     System.out.println(Encode.encode(decode(code)));
-    // }
 }

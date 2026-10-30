@@ -42,7 +42,6 @@ public class Handshake {
         byte pstrlen = in.readByte();
         byte[] pstrBytes = new byte[pstrlen];
         in.readFully(pstrBytes);
-        //String pstr = new String(pstrBytes, StandardCharsets.UTF_8);
         byte[] reserved = new byte[8];
         in.readFully(reserved);
         byte[] infoHashByte = new byte[20];

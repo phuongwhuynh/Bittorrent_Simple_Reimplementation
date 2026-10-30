@@ -34,27 +34,12 @@ public class TrackerServer {
             String query = exchange.getRequestURI().getRawQuery();
             Map<String, String> params = parseQueryParams(query);
 
-            // Retrieve and decode infoHash
-            // String infoHashUrlEncoded = params.get("info_hash");
-
-            // if (infoHashUrlEncoded == null || infoHashUrlEncoded.isEmpty()) {
-            //     exchange.sendResponseHeaders(400, -1);
-            //     return;
-            // }
-
-            // // Decode the URL-encoded info_hash
-            // String infoHash = new String(URLHandle.decode(infoHashUrlEncoded));
+            // Retrieve infoHash and peerId
             String infoHash=params.get("info_hash");
             if (infoHash.length() != 20) { // SHA-1 hash should be 20 bytes long
                 exchange.sendResponseHeaders(401, -1);
                 return;
             }
-            // String peerIdEncoded=params.get("peer_id");
-            // if (peerIdEncoded == null || peerIdEncoded.isEmpty()){
-            //     exchange.sendResponseHeaders(402, -1);
-            //     return;
-            // }
-            // String peerId = new String(URLHandle.decode(peerIdEncoded));
             String peerId=params.get("peer_id");
             if (peerId.length() != 20){
                 exchange.sendResponseHeaders(403, -1);
@@ -74,7 +59,6 @@ public class TrackerServer {
                 System.out.println("YES SIR REMOVED IT");
                 peerMap.remove(peerId);
             } else {
-                //IP address: exchange.getRemoteAddress().getAddress().getHostAddress();
                 Peer peer = new Peer(peerId.getBytes("ISO-8859-1"), exchange.getRemoteAddress().getAddress().getHostAddress(), port, uploaded, downloaded, left);
                 peerMap.put(peerId, peer);
             }
@@ -109,10 +93,6 @@ public class TrackerServer {
             responseMap.put("peers", peerList);
 
             //if peerList too small (first initiated torrent) put interval time short so that peer can discover each other.
-            // if (peerList.size()>10) responseMap.put("interval", 1800);
-            // else if (peerList.size() >5) responseMap.put("interval", 60);
-            // else if (peerList.size() >2) responseMap.put("interval", 30);
-            // else responseMap.put("interval", 10);
             if (peerList.size()<5) responseMap.put("interval", 10);
             else responseMap.put("interval", 1800);
 

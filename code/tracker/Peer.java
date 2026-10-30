@@ -1,9 +1,5 @@
 package tracker;
 
-// import com.sun.net.httpserver.*;
-// import java.net.*;
-// import java.io.*;
-// import java.util.*;
 import java.nio.charset.StandardCharsets;
 public class Peer {
     private byte[] peerId;
