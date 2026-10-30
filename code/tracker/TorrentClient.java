@@ -292,8 +292,37 @@ public class TorrentClient {
         public int getStatus(int pieceIndex){
             return this.pieceStatus.get(pieceIndex);
         }
+        //put an unfinished piece back in the pool and hand it to any peer that has it and is waiting for work
+        public synchronized void releasePiece(int pieceIndex){
+            if (getStatus(pieceIndex)!=2) return;
+            setStatus(pieceIndex, 0);
+            for (PeerConnection peerConnection : new ArrayList<>(peerConnections)){
+                if (!peerConnection.peerHave.get(pieceIndex)) continue;
+                try {
+                    if (peerConnection.isIdle()) assignPiece(peerConnection);
+                    else if (peerConnection.peerChoking && !peerConnection.amInterested) peerConnection.sendInterested();
+                }
+                catch (IOException e){
+                    e.printStackTrace();
+                }
+                if (getStatus(pieceIndex)!=0) return;
+            }
+        }
         public void sendHave(int pieceIndex) throws IOException{
-            for (PeerConnection peerConnection : peerConnections) peerConnection.sendHave(pieceIndex);
+            List<PeerConnection> snapshot;
+            synchronized (this) {
+                snapshot=new ArrayList<>(peerConnections);
+            }
+            for (PeerConnection peerConnection : snapshot) peerConnection.sendHave(pieceIndex);
+        }
+        public void pieceCompleted(int pieceIndex) throws IOException{
+            setStatus(pieceIndex, 1);
+            sendHave(pieceIndex);
+            synchronized (this) {
+                if (gotAll || pieceStatus.contains(0) || pieceStatus.contains(2)) return;
+                fileManager.bufferToFile(this.outputPath);
+                gotAll=true;
+            }
         }
         public synchronized void assignPiece(PeerConnection peerConnection) throws IOException{
 
@@ -333,11 +362,12 @@ public class TorrentClient {
                 while (true){
                     try {
                         // unchoke the MAX_UNCHOKED_PEERS fastest peers + 1 optimistic
-                        if (peerConnections==null) {
-                            Thread.sleep(1000);
-                            continue;
+                        List<PeerConnection> peerConnections;
+                        synchronized (TorrentState.this) {
+                            peerConnections=new ArrayList<>(TorrentState.this.peerConnections);
                         }
-                        Collections.sort(peerConnections, Comparator.comparingDouble(PeerConnection::calculateDownloadSpeed));
+                        //fastest peers first
+                        Collections.sort(peerConnections, Comparator.comparingDouble(PeerConnection::calculateDownloadSpeed).reversed());
                         for (PeerConnection peer: peerConnections) peer.setChoke();
                         int unchokedPeersCount = 0;
                         for (PeerConnection peer : peerConnections) {

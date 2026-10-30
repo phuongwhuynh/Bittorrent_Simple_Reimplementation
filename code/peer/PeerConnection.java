@@ -183,11 +183,14 @@ public class PeerConnection implements Runnable {
 
                     if (messageId==PeerProtocol.CHOKE){
                         peerChoking=true;
-                        if (currentPiece !=-1) parent.setStatus(currentPiece, 0);  //choke halfway, set status of piece to 0 so that it can be assigned to new peer
+                        //a choking peer drops our pending requests, so forget them and release the piece for other peers
+                        inflightRequests=0;
+                        releaseCurrentPiece();
                     }
                     else if (messageId== PeerProtocol.UNCHOKE){ 
                         peerChoking=false;
-                        parent.assignPiece(this);
+                        if (currentPiece==-1) parent.assignPiece(this);
+                        else sendNextRequest();
                     }
                     else if (messageId == PeerProtocol.INTERESTED){
                         peerInterested=true;
@@ -237,26 +240,30 @@ public class PeerConnection implements Runnable {
                         int index=in.readInt();
                         int begin=in.readInt();
                         int blockIndex=begin/Conf.BLOCK_LENGTH;
-                        if (fileManager.blockDownloaded[index][blockIndex]) continue;
                         byte[] block= new byte[length-9];
-                        in.readFully(block);
+                        in.readFully(block);    //always consume the payload, even for duplicates, to keep the stream in sync
+                        if (inflightRequests>0) inflightRequests--;
+                        if (fileManager.havePiece.get(index) || fileManager.blockDownloaded[index][blockIndex]) {
+                            if (index==currentPiece) sendNextRequest();
+                            continue;
+                        }
                         fileManager.writeBlock(index, begin, block);
-                        inflightRequests--;
                         parent.increaseDownload(block.length);
                         updateDownloadedBytes(length-9);
-                        if (blockIndex==totalPieceBlock-1){
+                        if (fileManager.getBlockIndex(index)==-1){
                             if (fileManager.validate(index)) {
-                                System.out.println("Downloaded piece " + currentPiece + " from peer " + peerIndex);
-                                parent.setStatus(index, 1);
-                                parent.sendHave(currentPiece);
-                                parent.assignPiece(this);
+                                System.out.println("Downloaded piece " + index + " from peer " + peerIndex);
+                                parent.pieceCompleted(index);
+                                if (index==currentPiece) currentPiece=-1;
+                                if (currentPiece==-1 && !peerChoking) parent.assignPiece(this);
                             }
-                            else {
+                            else if (index==currentPiece) {
+                                parent.setStatus(index, 2);
                                 curBlockIndex=0;
                                 sendNextRequest();
                             }
                         }
-                        else sendNextRequest();
+                        else if (index==currentPiece) sendNextRequest();
 
 
                     }
@@ -278,7 +285,18 @@ public class PeerConnection implements Runnable {
             e.printStackTrace();
         }
     }
+    public boolean isIdle(){
+        return !peerChoking && currentPiece==-1;
+    }
+    private void releaseCurrentPiece(){
+        if (currentPiece!=-1) {
+            int piece=currentPiece;
+            currentPiece=-1;
+            parent.releasePiece(piece);
+        }
+    }
     public void dropConnection(){
+        releaseCurrentPiece();
         parent.peerLeave(this, this.peerId);
         if (socket != null && !socket.isClosed()) {
             try {
