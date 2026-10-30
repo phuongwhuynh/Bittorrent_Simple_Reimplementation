@@ -1,0 +1,12 @@
+# Large media used as test payloads
+*.mp4
+*.mp3
+
+# Build output
+*.class
+out/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
