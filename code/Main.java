@@ -50,7 +50,7 @@ public class Main {
                     if (input.equalsIgnoreCase("exit")) continue;
                     int port=Integer.parseInt(input);
                     try{
-                        TorrentInfo.generateTorrentFile(input, torrentPath);
+                        TorrentInfo.generateTorrentFile(uploadPath, torrentPath);
                         torrentClient.addSeeder(torrentPath,uploadPath,port);
                     }
                     catch (IOException e){
